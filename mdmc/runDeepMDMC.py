@@ -176,7 +176,7 @@ results_dir = "{}_results_N{}_X{}{}_{}bar_{}K".format(args.sim_type,
                                                       args.nmdsteps,
                                                       args.nmcswap + args.nmcmoves,
                                                       "_flexAds" if args.flex_ads else "",
-                                                      args.pressure/bar,
+                                                      args.pressure,
                                                       int(args.temperature))
 
 # Create the results directory if it doesn't exist
