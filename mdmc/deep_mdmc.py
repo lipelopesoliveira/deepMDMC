@@ -504,6 +504,7 @@ class DeepMDMC():
 
         self.uptake = []
         self.adsorption_energy = []
+        self.total_energy = []
 
         self.fl_status = open(f"{self.results_dir}/status.csv", "w")
         print("Steps,trial_insertion, succ_insertion,trial_deletaion,succ_deletion,mcswap(%),mcmoves(%)", file=self.fl_status)
@@ -522,12 +523,14 @@ class DeepMDMC():
         n_trial_mcswap = 0
         n_trial_mcmoves = 0
 
-        # NOTE flex ads not tested
+        # Set calculator for the GCMC energy
         self.atoms.calc = self.calc_gcmc
+
+        # NOTE flex ads not tested
         if self.flex_ads:
             self.e = self.atoms.get_potential_energy() * electronvolt - self._get_e_ads(self.atoms) * electronvolt
         else:
-            self.e = self.atoms.get_potential_energy() * electronvolt - self.e_ads * self.Z_ads # eV to Hartree
+            self.e = self.atoms.get_potential_energy() * electronvolt - self.e_ads * self.Z_ads  # eV to Hartree
 
         # set V after MD steps
         self.cell = np.array(self.atoms.get_cell())
@@ -566,22 +569,28 @@ class DeepMDMC():
 
             self.uptake.append(self.Z_ads)
             self.adsorption_energy.append(self.e)
+            self.total_energy.append(self.atoms.get_potential_energy())
 
             # save uptake and energies at every step in
             try:
                 np.save(f'{self.results_dir}/uptake_{self.P/bar}bar.npy', np.array(self.uptake))
                 np.save(f'{self.results_dir}/adsorption_energy_{self.P/bar}bar.npy', np.array(self.adsorption_energy))
+                np.save(f'{self.results_dir}/total_energy_{self.P/bar}bar.npy', np.array(self.total_energy))
             except:
                 print("saving npz failed but continue GCMC")
 
             # save status and geoms
             if self.n_tot_succ_steps % self.interval == 0 and self.old_n_tot_succ_steps != self.n_tot_succ_steps:
                 try:
-                    write(f'{self.results_dir}/trajectory_{self.P/bar}bar.extxyz',
-                          self.atoms, append=True,
-                      write_results=False, write_info=False)
-                except:
+                    write(f'{self.results_dir}/trajectory_{self.P/bar}bar.extxyz', 
+                          self.atoms,
+                          append=True,
+                          write_results=False,
+                          write_info=False)
+
+                except Exception as e:
                     print("saving extxyz failed but continue GCMC")
+                    print(e)
 
                 print("{}, {}, {}, {}, {}, {:.1f}, {:.1f}".format(
                     self.n_tot_succ_steps,
