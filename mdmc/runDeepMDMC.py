@@ -95,6 +95,26 @@ parser.add_argument("-nmcmoves",
                     required=True,
                     metavar="NMCMOVES",
                     help="Average number of GCMC moves to attempt every nmdsteps steps.")
+parser.add_argument("-framework_atom_types",
+                    type=str,
+                    required=True,
+                    metavar="FRAMEWORK_ATOM_TYPES",
+                    help="Atom types for the framework atoms as a csv strung. Ex.: 'Mg,O,C,H'.")
+parser.add_argument("-framework_atom_masses",
+                    type=str,
+                    required=True,
+                    metavar="FRAMEWORK_ATOM_MASSES",
+                    help="Masses for the framework atoms as a csv strung. Ex.: '24.3050,15.9994,12.0107,1.00794'.")
+parser.add_argument("-adsorbate_atom_types",
+                    type=str,
+                    required=True,
+                    metavar="ADSORBATE_ATOM_TYPES",
+                    help="Atom types for the adsorbate atoms as a csv strung. Ex.: 'C,O'.")
+parser.add_argument("-adsorbate_atom_masses",
+                    type=str,
+                    required=True,
+                    metavar="ADSORBATE_ATOM_MASSES",
+                    help="Masses for the adsorbate atoms as a csv strung. Ex.: '12.0107,15.9994'.")
 # Optional arguments
 parser.add_argument("-flex_ads",
                     type=str,
@@ -159,23 +179,19 @@ os.makedirs(results_dir, exist_ok=True)
 
 #  atom_type_pairs = {"Mg": 1, "O": 2,  "C": 3, "H": 4}
 #  atom_type_pairs = {"Mg": 1, "O": 2,  "C": 3, "H": 4, "C2": 5, "O2": 6}
-atom_type_pairs_frame = {"Mg": [1, 24.3050],
-                         "O": [2, 15.9994],
-                         "C": [3, 12.0107],
-                         "H": [4, 1.00794]}
+atom_type_pairs_frame = {atom: [i + 1, float(mass)] for i, (atom, mass) in enumerate(
+    zip(args.framework_atom_types.split(","),
+        args.framework_atom_masses.split(",")))
+    }
+atom_type_pairs_ads = {atom: [i + 1 + len(atom_type_pairs_frame), float(mass)] for i, (atom, mass) in enumerate(
+    zip(args.adsorbate_atom_types.split(","),
+        args.adsorbate_atom_masses.split(",")))
+    }
 
-atom_type_pairs_ads = {"C": [5, 12.0107],
-                       "O": [6, 15.9994]}
+masses = {i + 1: float(mass) for i, mass in enumerate(
+    args.framework_atom_masses.split(",") + args.adsorbate_atom_masses.split(","))
+    }
 
-masses = {
-    1: 24.3050,
-    2: 15.9994,
-    3: 12.0107,
-    4: 1.00794,
-    5: 12.0107,
-    6: 15.9994,
-}
-#  specorder=["Mg", "O", "C", "H"]
 
 tdump = 500 * args.timestep
 pdump = 5000 * args.timestep
