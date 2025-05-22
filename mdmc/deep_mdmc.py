@@ -6,8 +6,8 @@ from ase.cell import Cell
 from ase.io import read, write
 from ase.constraints import FixBondLengths, FixLinearTriatomic
 
-from molmod.units import angstrom
-from molmod.constants import boltzmann, electronvolt, kjmol
+from molmod.units import angstrom, electronvolt, kjmol, bar
+from molmod.constants import boltzmann
 from molmod.periodic import periodic
 from utilities import _random_rotation, random_position, vdw_overlap, vdw_collision
 import tqdm
@@ -741,4 +741,3 @@ class DeepMDMC():
         #  self.lmp.command(f"dump 1 all atom {self.interval} {self.results_dir}/md_{self.T}K_{self.P/bar}bar.lammpstrj")
         #  self.lmp.command(f"dump_modify 1 append yes")
         #  self.lmp.command(f"rerun last_frame.lammpstrj dump x y z vx vy vz")
-
