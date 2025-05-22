@@ -162,6 +162,12 @@ device = 'cuda' if torch.cuda.is_available() else 'cpu'
 #  calc_gcmc = load_model(model_gcmc_path)
 #  calc_md = load_model(model_md_path)
 
+vdw_radii = vdw_radii.copy()
+vdw_radii[1] = 1.0
+vdw_radii[6] = 1.0
+vdw_radii[8] = 1.25
+vdw_radii[12] = 1.25
+
 #  fugacity = calculate_fugacity_with_coolprop("HEOS", "CO2", temperature, pressure)
 eos = PREOS.from_name('carbondioxide')
 fugacity = eos.calculate_fugacity(args.temperature, pressure)
@@ -191,7 +197,6 @@ atom_type_pairs_ads = {atom: [i + 1 + len(atom_type_pairs_frame), float(mass)] f
 masses = {i + 1: float(mass) for i, mass in enumerate(
     args.framework_atom_masses.split(",") + args.adsorbate_atom_masses.split(","))
     }
-
 
 tdump = 500 * args.timestep
 pdump = 5000 * args.timestep
