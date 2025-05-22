@@ -27,6 +27,7 @@ from itertools import combinations
 
 from lammps import lammps
 from ase.calculators.lammps import Prism, convert
+import nequip
 from nequip.ase.nequip_calculator import NequIPCalculator
 
 
@@ -478,17 +479,20 @@ class DeepMDMC():
             self.e = e_trial
             self.n_tot_succ_steps += 1
 
-    def _load_model(self, model_path):
-        # return NequIPCalculator.from_deployed_model(model_path = model_path, device="cuda")
-        return NequIPCalculator.from_compiled_model(
-            compile_path=model_path,
-            chemical_symbols=["Mg", "O", "C", "H", "C", "O"],
-            device="cpu")
+    def _load_model(self, model_path, device: str = "cpu"):
+        if float(nequip.__version__) < 7.0:
+            return NequIPCalculator.from_deployed_model(model_path=model_path,
+                                                        device=device)
+        else:
+            return NequIPCalculator.from_compiled_model(
+                compile_path=model_path,
+                device=device)
 
     def init_gcmc(self):
 
         # load gcmc model as a ase calc
-        self.calc_gcmc = self._load_model(self.model_path_gcmc)
+        self.calc_gcmc = self._load_model(self.model_path_gcmc,
+                                          device=self.device)
 
         print("GCMC model loaded")
 
