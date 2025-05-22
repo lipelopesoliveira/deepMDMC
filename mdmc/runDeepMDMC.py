@@ -2,7 +2,7 @@ import sys
 import os
 import numpy as np
 import torch
-torch.set_num_threads(6)
+
 from ase import Atoms
 from ase.io import read, write
 from ase.data import vdw_radii
@@ -13,7 +13,7 @@ from ase.io.trajectory import Trajectory
 
 from time import time
 from deep_mdmc import DeepMDMC
-from molmod.units import *
+from molmod.units import kelvin, bar
 from time import time
 
 from utilities import PREOS
@@ -23,16 +23,38 @@ import argparse
 
 from utilities import calculate_fugacity_with_coolprop, getBoolStr
 
+torch.set_num_threads(6)
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 
 parser = argparse.ArgumentParser(description="MD-GCMC simulation with DeepMDMC")
+# Required arguments
 parser.add_argument("-sim_type",
                     type=str,
                     choices=["rigid", "gcmc", "gcmcmd", "tmmcmd"],
                     required=True,
                     metavar="SIM_TYPE",
                     help="Type of simulation to be performed. Choose from 'rigid', 'gcmc', 'gcmcmd', or 'tmmcmd'.")
+parser.add_argument("-model_gcmc_path",
+                    type=str,
+                    required=True,
+                    metavar="MODEL_GCMC_PATH",
+                    help="Path to the Nequip MLP model to use on the GCMC moves.")
+parser.add_argument("-model_md_path",
+                    type=str,
+                    required=True,
+                    metavar="MODEL_MD_PATH",
+                    help="Path to the Nequip MLP model to use on the MD simulations.")
+parser.add_argument("-struc_path",
+                    type=str,
+                    required=True,
+                    metavar="STRUCTURE_PATH",
+                    help="Path to the initial structure as .cif file.")
+parser.add_argument("-molecule_path",
+                    type=str,
+                    required=True,
+                    metavar="MOLECULE_PATH",
+                    help="Path to the adsorbate molecule as .dat file.")
 parser.add_argument("-pressure",
                     type=float,
                     required=True,
@@ -73,38 +95,22 @@ parser.add_argument("-nmcmoves",
                     required=True,
                     metavar="NMCMOVES",
                     help="Average number of GCMC moves to attempt every nmdsteps steps.")
+# Optional arguments
 parser.add_argument("-flex_ads",
                     type=str,
-                    required=True,
+                    required=False,
+                    default="False",
                     metavar="FLEX_ADS",
                     help="Whether to use flexible adsorbate. Choose from 'True/False' or 'yes/no'.")
 parser.add_argument("-opt",
                     type=str,
-                    required=True,
+                    required=False,
+                    default="False",
                     help="Whether to perform geometry optimization on the initial structure.'True/False' or 'yes/no'.")
-parser.add_argument("-model_gcmc_path",
-                    type=str,
-                    required=True,
-                    metavar="MODEL_GCMC_PATH",
-                    help="Path to the Nequip MLP model to use on the GCMC moves.")
-parser.add_argument("-model_md_path",
-                    type=str,
-                    required=True,
-                    metavar="MODEL_MD_PATH",
-                    help="Path to the Nequip MLP model to use on the MD simulations.")
-parser.add_argument("-struc_path",
-                    type=str,
-                    required=True,
-                    metavar="STRUCTURE_PATH",
-                    help="Path to the initial structure as .cif file.")
-parser.add_argument("-molecule_path",
-                    type=str,
-                    required=True,
-                    metavar="MOLECULE_PATH",
-                    help="Path to the adsorbate molecule as .dat file.")
 parser.add_argument("-interval",
                     type=int,
-                    required=True,
+                    required=False,
+                    default=100,
                     metavar="INTERVAL",
                     help="Interval for printing the simulation infomration on Lammps simulations.")
 args = parser.parse_args()
@@ -122,53 +128,44 @@ args = parser.parse_args()
 #          #  set_global_options=True
 #      )
 
-
-#  temperature = 273 * kelvin
-sim_type = args.sim_type
-temperature = args.temperature * kelvin
+# Process command line arguments
+args.sim_type = args.sim_type.lower()
+args.temperature *= kelvin
 pressure = args.pressure * bar
-timestep = args.timestep
-totalsteps = args.totalsteps
-nmdsteps = args.nmdsteps # invoke this fix every nmdsteps steps
-nmcswap = args.nmcswap # average number of GCMC exchanges to attempt every nmdsteps steps
-nmcmoves = args.nmcmoves # average number of MC moves to attempt every nmdsteps steps
-model_gcmc_path = args.model_gcmc_path
-model_md_path = args.model_md_path
-struc_path = args.struc_path
-molecule_path = args.molecule_path
-interval = args.interval
 
-flex_ads = getBoolStr(args.flex_ads)
-opt = getBoolStr(args.opt)
+args.flex_ads = getBoolStr(args.flex_ads)
+args.opt = getBoolStr(args.opt)
+
 # Preferably run on GPUs
-device = 'cuda'
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 #  calc_gcmc = load_model(model_gcmc_path)
 #  calc_md = load_model(model_md_path)
 
-
-vdw_radii = vdw_radii.copy()
-vdw_radii[1] = 1.0
-vdw_radii[6] = 1.0
-vdw_radii[8] = 1.25
-vdw_radii[12] = 1.25
-
 #  fugacity = calculate_fugacity_with_coolprop("HEOS", "CO2", temperature, pressure)
 eos = PREOS.from_name('carbondioxide')
-fugacity = eos.calculate_fugacity(temperature, pressure)
+fugacity = eos.calculate_fugacity(args.temperature, pressure)
 
-flex_ads_keyword = ""
-if flex_ads:
-    flex_ads_keyword = "_flexAds"
-results_dir = f"{sim_type}_results_N{nmdsteps}_X{nmcswap+nmcmoves}{flex_ads_keyword}_{pressure/bar}bar_{int(temperature)}K"
-if not os.path.exists(results_dir):
-    os.mkdir(results_dir)
+results_dir = "{}_results_N{}_X{}{}_{}bar_{}K".format(args.sim_type,
+                                                      args.nmdsteps,
+                                                      args.nmcswap + args.nmcmoves,
+                                                      "_flexAds" if args.flex_ads else "",
+                                                      args.pressure/bar,
+                                                      int(args.temperature))
+
+# Create the results directory if it doesn't exist
+os.makedirs(results_dir, exist_ok=True)
 
 
 #  atom_type_pairs = {"Mg": 1, "O": 2,  "C": 3, "H": 4}
 #  atom_type_pairs = {"Mg": 1, "O": 2,  "C": 3, "H": 4, "C2": 5, "O2": 6}
-atom_type_pairs_frame = {"Mg": [1, 24.3050], "O": [2, 15.9994],  "C": [3, 12.0107], "H": [4, 1.00794]}
-atom_type_pairs_ads = {"C": [5, 12.0107], "O": [6, 15.9994]}
+atom_type_pairs_frame = {"Mg": [1, 24.3050],
+                         "O": [2, 15.9994],
+                         "C": [3, 12.0107],
+                         "H": [4, 1.00794]}
+
+atom_type_pairs_ads = {"C": [5, 12.0107],
+                       "O": [6, 15.9994]}
 
 masses = {
     1: 24.3050,
@@ -180,11 +177,59 @@ masses = {
 }
 #  specorder=["Mg", "O", "C", "H"]
 
-tdump = 500 * timestep
-pdump = 5000 * timestep
+tdump = 500 * args.timestep
+pdump = 5000 * args.timestep
 
-if sim_type != "tmmcmd":
-    atoms_frame = read(struc_path)
+if args.sim_type == "tmmcmd":
+    #  pass
+    #  atoms_frame0 = read(struc_path)
+    #  replica = [1, 1, 1]
+    #  P = [[0, 0, -replica[0]], [0, -replica[1], 0], [-replica[2], 0, 0]]
+    #  atoms_frame = make_supercell(atoms_frame, P)
+    #  write("frame0.extxyz", atoms_frame)
+
+    atoms_ads = read(args.molecule_path)
+    vdw_radii = vdw_radii.copy()
+    # Mg radius is set to 1.0 A
+    vdw_radii[12] = 1.0
+    atoms_frame0 = read("frame0.extxyz")
+    atoms_frame = read("loaded_frame1.extxyz")
+    Z_ads = int((len(atoms_frame) - len(atoms_frame0)) / len(atoms_ads))
+    #  print(N_ads)
+    #  quit()
+    deep_mdmc = DeepMDMC(
+        args.model_gcmc_path,
+        args.model_md_path,
+        results_dir,
+        args.interval,
+        atoms_frame,
+        atoms_ads,
+        args.flex_ads,
+        Z_ads,
+        args.temperature,
+        pressure,
+        fugacity,
+        device,
+        vdw_radii
+        )
+
+    #  deep_mdmc.init_gcmc()
+    deep_mdmc.init_md(args.timestep,
+                      atom_type_pairs_frame,
+                      atom_type_pairs_ads,
+                      units_lmp="metal",
+                      tdump=tdump,
+                      pdump=pdump,
+                      md_type="npt",
+                      opt=False,
+                      equ_steps=0)
+    deep_mdmc.run_tmmcmd(nmdsteps=180000)
+
+    # Exit after TMMCMD
+    sys.exit(0)
+
+else:
+    atoms_frame = read(args.struc_path)
     replica = [1, 1, 1]
     P = [[0, 0, -replica[0]], [0, -replica[1], 0], [-replica[2], 0, 0]]
     atoms_frame = make_supercell(atoms_frame, P)
@@ -204,54 +249,43 @@ if sim_type != "tmmcmd":
     #  quit()
     # C and O were renamed to Co and Os to differentiate them from framework atoms during training
     #  atoms_ads = read('./co2_v2.xyz')
-    atoms_ads = read(molecule_path)
+    atoms_ads = read(args.molecule_path)
     Z_ads = 0
-    deep_mdmc = DeepMDMC(model_gcmc_path, model_md_path, results_dir, interval, atoms_frame, atoms_ads, flex_ads,
-                      Z_ads, temperature, pressure, fugacity, device, vdw_radii)
+    deep_mdmc = DeepMDMC(
+        args.model_gcmc_path,
+        args.model_md_path,
+        results_dir,
+        args.interval,
+        atoms_frame,
+        atoms_ads,
+        args.flex_ads,
+        Z_ads,
+        args.temperature,
+        pressure,
+        fugacity,
+        device,
+        vdw_radii
+        )
 
-# initialize MD
 
-#  if nmdsteps == 0:
-    #  sim_type = "rigid"
+if args.nmdsteps == 0:
+    args.sim_type = "rigid"
 
-if sim_type.lower() == "rigid":
+if args.sim_type.lower() == "rigid":
     deep_mdmc.init_gcmc()
-    deep_mdmc.run_gcmc(nmcswap, nmcmoves)
-elif sim_type.lower() == "gcmcmd":
-    deep_mdmc.init_md(timestep, atom_type_pairs_frame,
-                      atom_type_pairs_ads, units_lmp="metal",
-                      tdump=tdump, pdump=pdump, md_type="npt",
-                      opt=True, equ_steps=50000)
+    deep_mdmc.run_gcmc(args.nmcswap, args.nmcmoves)
+
+elif args.sim_type.lower() == "gcmcmd":
+
+    deep_mdmc.init_md(args.timestep,
+                      atom_type_pairs_frame,
+                      atom_type_pairs_ads,
+                      units_lmp="metal",
+                      tdump=tdump,
+                      pdump=pdump,
+                      md_type="npt",
+                      opt=True,
+                      equ_steps=args.neqsteps)
+
     deep_mdmc.init_gcmc()
-    deep_mdmc.run_gcmcmd(totalsteps, nmdsteps, nmcswap, nmcmoves)
-elif sim_type.lower() == "tmmcmd":
-    #  pass
-    #  atoms_frame0 = read(struc_path)
-    #  replica = [1, 1, 1]
-    #  P = [[0, 0, -replica[0]], [0, -replica[1], 0], [-replica[2], 0, 0]]
-    #  atoms_frame = make_supercell(atoms_frame, P)
-    #  write("frame0.extxyz", atoms_frame)
-
-    atoms_ads = read(molecule_path)
-    vdw_radii = vdw_radii.copy()
-    # Mg radius is set to 1.0 A
-    vdw_radii[12] = 1.0
-    atoms_frame0 = read("frame0.extxyz")
-    atoms_frame = read("loaded_frame1.extxyz")
-    Z_ads = int((len(atoms_frame) - len(atoms_frame0)) / len(atoms_ads))
-    #  print(N_ads)
-    #  quit()
-    deep_mdmc = DeepMDMC(model_gcmc_path, model_md_path, results_dir, interval, atoms_frame, atoms_ads, flex_ads,
-                      Z_ads, temperature, pressure, fugacity, device, vdw_radii)
-
-    #  deep_mdmc.init_gcmc()
-    deep_mdmc.init_md(timestep, atom_type_pairs_frame,
-                      atom_type_pairs_ads, units_lmp="metal",
-                      tdump=tdump, pdump=pdump, md_type="npt",
-                      opt=False, equ_steps=0)
-    deep_mdmc.run_tmmcmd(nmdsteps=180000)
-else:
-    print("Error: invalid sim_type")
-
-
-
+    deep_mdmc.run_gcmcmd(args.totalsteps, args.nmdsteps, args.nmcswap, args.nmcmoves)
