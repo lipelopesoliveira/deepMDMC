@@ -19,12 +19,13 @@ from ase.units import fs, kB
 from ase.io.trajectory import Trajectory
 
 from ase.io.lammpsdata import read_lammps_data
-from lammpsdata import write_lammps_data # modified 
+from lammpsdata import write_lammps_data # modified
 
 from itertools import combinations
 
 from lammps import lammps
 from ase.calculators.lammps import Prism, convert
+from nequip.ase.nequip_calculator import NequIPCalculator
 
 
 
@@ -41,7 +42,7 @@ class DeepMDMC():
         self.flex_ads = flex_ads
         self.n_ads = len(self.atoms_ads)
         self.cell = np.array(atoms_frame.get_cell())
-        self.V = np.linalg.det(self.cell) * angstrom**3
+        self.V = np.linalg.det(self.cell) * angstrom ** 3
         self.T = T
         self.P = P
         self.fugacity = fugacity
@@ -59,9 +60,9 @@ class DeepMDMC():
         ads_molecules = []
         for i in range(0, len(ads_atoms), self.n_ads):
             ads_molecule = Atoms(
-                symbols = ads_atoms[i:i+self.n_ads].get_chemical_symbols(),
-                positions = ads_atoms[i:i+self.n_ads].get_positions(),
-                cell = atoms.get_cell()
+                symbols=ads_atoms[i:i+self.n_ads].get_chemical_symbols(),
+                positions=ads_atoms[i:i+self.n_ads].get_positions(),
+                cell=atoms.get_cell()
             )
             ads_molecules.append(ads_molecule)
 
@@ -104,11 +105,9 @@ class DeepMDMC():
         """Split a list into sub tuple of the specified length."""
 
         # Return a new tuple with the smallest value in the middle
-        return [(sorted(lst[i:i + length])[1],
-                 sorted(lst[i:i + length])[0],
-                 sorted(lst[i:i + length])[2])
-                    for i in range(0, len(lst), length)
-               ]
+        return [(sorted(lst[i:i + length])[1], sorted(lst[i:i + length])[0], sorted(lst[i:i + length])[2])
+                for i in range(0, len(lst), length)
+                ]
 
     def _get_e_ads(self, atoms):
         e_ads = 0.0
@@ -144,6 +143,7 @@ class DeepMDMC():
 
     def _lammps2ase_atoms(self, atom_type_pairs):
         """Retrieve the last frame of the simulation and convert it to ASE Atoms."""
+
         natoms = self.lmp.get_natoms()
         atom_types = np.array(self.lmp.gather_atoms("type", 0, 1))  # Gather atom types
         positions = np.array(self.lmp.gather_atoms("x", 1, 3))  # Gather positions
@@ -212,15 +212,32 @@ class DeepMDMC():
 
             """
             f.write("ITEM: BOX BOUNDS xy xz yz pp pp pp\n")
+            print(atoms_frame.get_cell())
             prismobj = Prism(atoms_frame.get_cell(), reduce_cell=False)
+            print(prismobj.get_lammps_prism())
 
             #  Get cell parameters and convert from ASE units to LAMMPS units
             xhi, yhi, zhi, xy, xz, yz = convert(
                 prismobj.get_lammps_prism(), 'distance', 'ASE', units)
 
-            f.write(f"{xy:.16e} {xhi:.16e} {xy:.16e}\n")
-            f.write(f"{yz:.16e} {yhi:.16e} {xz:.16e}\n")
-            f.write(f"{xz:.16e} {zhi:.16e} {yz:.16e}\n")
+            xlo_bound = 0 + min(0, xy, xz, xy + xz)
+            xhi_bound = xhi + max(0, xy, xz, xy + xz)
+            ylo_bound = 0 + min(0, yz)
+            yhi_bound = yhi + max(0, yz)
+            zlo_bound = 0
+            zhi_bound = zhi
+
+            print(f"{xlo_bound:.16e} {xhi_bound:.16e} {xy:.16e}")
+            print(f"{ylo_bound:.16e} {yhi_bound:.16e} {xz:.16e}\n")
+            print(f"{zlo_bound:.16e} {zhi_bound:.16e} {yz:.16e}\n")
+
+            f.write(f"{xlo_bound:.16e} {xhi_bound:.16e} {xy:.16e}\n")
+            f.write(f"{ylo_bound:.16e} {yhi_bound:.16e} {xz:.16e}\n")
+            f.write(f"{zlo_bound:.16e} {zhi_bound:.16e} {yz:.16e}\n")
+
+            #f.write(f"{xy:.16e} {xhi:.16e} {xy:.16e}\n")
+            #f.write(f"{yz:.16e} {yhi:.16e} {xz:.16e}\n")
+            #f.write(f"{xz:.16e} {zhi:.16e} {yz:.16e}\n")
 
             # Write atomic data for frame
             i = 0
@@ -278,7 +295,7 @@ class DeepMDMC():
         self.lmp.command("newton off")
         #  self.lmp.command(f"read_data {data_file}")
         self.lmp.command(f"read_data {data_file} extra/atom/types 2")
-        self.lmp.command(f"molecule co2mol CO2.txt")
+        self.lmp.command(f"molecule co2mol CO2.dat")
 
         for values in atom_type_pairs_frame.values():
            self.lmp.command(f"mass {values[0]} {values[1]}")
@@ -452,15 +469,18 @@ class DeepMDMC():
             self.n_tot_succ_steps += 1
 
     def _load_model(self, model_path):
-        from nequip.ase.nequip_calculator import NequIPCalculator
-        return NequIPCalculator.from_deployed_model(
-            model_path = model_path,
-            device="cuda")
+        # return NequIPCalculator.from_deployed_model(model_path = model_path, device="cuda")
+        return NequIPCalculator.from_compiled_model(
+            compile_path=model_path,
+            chemical_symbols=["Mg", "O", "C", "H", "C", "O"],
+            device="cpu")
 
     def init_gcmc(self):
 
         # load gcmc model as a ase calc
         self.calc_gcmc = self._load_model(self.model_path_gcmc)
+
+        print("GCMC model loaded")
 
         # setting for gcmc
         if not self.flex_ads:
