@@ -4,8 +4,10 @@ import random
 from ase import Atoms
 from ase.cell import Cell
 from ase.io import read, write
-from molmod.units import *
-from molmod.constants import *
+from ase.constraints import FixBondLengths, FixLinearTriatomic
+
+from molmod.units import angstrom
+from molmod.constants import boltzmann, electronvolt, kjmol
 from molmod.periodic import periodic
 from utilities import _random_rotation, random_position, vdw_overlap, vdw_collision
 import tqdm
@@ -28,9 +30,21 @@ from ase.calculators.lammps import Prism, convert
 from nequip.ase.nequip_calculator import NequIPCalculator
 
 
-
 class DeepMDMC():
-    def __init__(self, model_path_gcmc, model_path_md, results_dir, interval, atoms_frame, atoms_ads, flex_ads, Z_ads, T, P, fugacity, device, vdw_radii):
+    def __init__(self,
+                 model_path_gcmc,
+                 model_path_md,
+                 results_dir,
+                 interval,
+                 atoms_frame,
+                 atoms_ads,
+                 flex_ads,
+                 Z_ads,
+                 T,
+                 P,
+                 fugacity,
+                 device,
+                 vdw_radii):
         self.model_path_gcmc = model_path_gcmc
         #  self.calc_md = calc_md
         self.model_path_md = model_path_md
@@ -75,8 +89,6 @@ class DeepMDMC():
 
     def _set_rigid_ads_atoms(self):
 
-        from ase.constraints import FixBondLengths
-
         indices = [atom.index for atom in self.atoms]
         ads_indices = indices[self.n_frame:]
 
@@ -88,8 +100,6 @@ class DeepMDMC():
             self.atoms.set_constraint(c)
 
     def _set_rigid_triatomic_ads_atoms(self):
-
-        from ase.constraints import FixLinearTriatomic
 
         indices = [atom.index for atom in self.atoms]
         ads_indices = indices[self.n_frame:]
@@ -489,7 +499,7 @@ class DeepMDMC():
             atoms_ads = self.atoms_ads.copy()
             atoms_ads_e = self.atoms_ads.copy()
             atoms_ads_e.calc = self.calc_gcmc
-            self.e_ads = atoms_ads_e.get_potential_energy() * electronvolt # eV to Hartree
+            self.e_ads = atoms_ads_e.get_potential_energy() * electronvolt  # eV to Hartree
         #  e = atoms.get_potential_energy() * electronvolt # eV to Hartree
 
         self.uptake = []
@@ -511,7 +521,6 @@ class DeepMDMC():
         ncycles = nmcswap + nmcmoves
         n_trial_mcswap = 0
         n_trial_mcmoves = 0
-
 
         # NOTE flex ads not tested
         self.atoms.calc = self.calc_gcmc
@@ -574,16 +583,18 @@ class DeepMDMC():
                 except:
                     print("saving extxyz failed but continue GCMC")
 
-                print(f"{self.n_tot_succ_steps},"\
-                      f"{self.n_trial_insertion},"\
-                      f"{self.n_succ_insertion},"\
-                      f"{self.n_trial_deletion},"\
-                      f"{self.n_succ_deletion},"\
-                      f"{100*n_trial_mcswap/ncycles:.1f},"\
-                      f"{100*n_trial_mcmoves/ncycles:.1f}", file=self.fl_status)
+                print("{}, {}, {}, {}, {}, {:.1f}, {:.1f}".format(
+                    self.n_tot_succ_steps,
+                    self.n_trial_insertion,
+                    self.n_succ_insertion,
+                    self.n_trial_deletion,
+                    self.n_succ_deletion,
+                    100*n_trial_mcswap/ncycles,
+                    100*n_trial_mcmoves/ncycles),
+                      file=self.fl_status)
+
                 self.fl_status.flush()
                 self.old_n_tot_succ_steps = self.n_tot_succ_steps
-
 
         # assign velocites to new added atoms
         if self.Z_ads_in_loop > 0:
@@ -602,7 +613,7 @@ class DeepMDMC():
             print("iter ", iteration+1)
 
             # for Zero Surface Tension (𝜎𝑎 = 0):
-            #Change the volume and/or shape of the simulation box during a dynamics run
+            # Change the volume and/or shape of the simulation box during a dynamics run
             #  self.lmp.command(f"fix no_deform all deform 1 x final 0 {cell_params[0]} y final 0 {cell_params[1]} z final 0 {cell_params[2]}")
 
             if not self.flex_ads:
