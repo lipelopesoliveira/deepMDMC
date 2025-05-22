@@ -23,26 +23,92 @@ import argparse
 
 from utilities import calculate_fugacity_with_coolprop, getBoolStr
 
-parser = argparse.ArgumentParser(description="Give something ...")
-parser.add_argument("-sim_type", type=str, required=True, help="")
-parser.add_argument("-pressure", type=float, required=True, help="")
-parser.add_argument("-temperature", type=float, required=True, help="")
-parser.add_argument("-timestep", type=float, required=True, help="")
-parser.add_argument("-totalsteps", type=int, required=True, help="")
-parser.add_argument("-nmdsteps", type=int, required=True, help="")
-parser.add_argument("-nmcswap", type=int, required=True, help="")
-parser.add_argument("-nmcmoves", type=int, required=True, help="")
-parser.add_argument("-flex_ads", type=str, required=True, help="")
-parser.add_argument("-opt", type=str, required=True, help="")
-parser.add_argument("-model_gcmc_path", type=str, required=True, help="")
-parser.add_argument("-model_md_path", type=str, required=True, help="")
-parser.add_argument("-struc_path", type=str, required=True, help="")
-parser.add_argument("-molecule_path", type=str, required=True, help="")
-parser.add_argument("-interval", type=int, required=True, help="")
-args = parser.parse_args()
-
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
+
+parser = argparse.ArgumentParser(description="MD-GCMC simulation with DeepMDMC")
+parser.add_argument("-sim_type",
+                    type=str,
+                    choices=["rigid", "gcmc", "gcmcmd", "tmmcmd"],
+                    required=True,
+                    metavar="SIM_TYPE",
+                    help="Type of simulation to be performed. Choose from 'rigid', 'gcmc', 'gcmcmd', or 'tmmcmd'.")
+parser.add_argument("-pressure",
+                    type=float,
+                    required=True,
+                    metavar="PRESSURE",
+                    help="Pressure of the gas phase in bar.")
+parser.add_argument("-temperature",
+                    type=float,
+                    required=True,
+                    metavar="TEMPERATURE",
+                    help="Temperature of the gas phase in K.")
+parser.add_argument("-timestep",
+                    type=float,
+                    required=True,
+                    metavar="TIMESTEP",
+                    help="Timestep for MD simulation in ps.")
+parser.add_argument("-totalsteps",
+                    type=int,
+                    required=True,
+                    metavar="TOTALSTEPS",
+                    help="Total number of steps for the complete simulation.")
+parser.add_argument("-nmdsteps",
+                    type=int,
+                    required=True,
+                    metavar="NMDSTEPS",
+                    help="Number of steps for MD simulation between each GCMC step.")
+parser.add_argument("-neqsteps",
+                    type=int,
+                    required=True,
+                    metavar="NEQSTEPS",
+                    help="Number of steps for equilibration before GCMC.")
+parser.add_argument("-nmcswap",
+                    type=int,
+                    required=True,
+                    metavar="NMCSWAP",
+                    help="Average number of GCMC exchanges to attempt every nmdsteps steps.")
+parser.add_argument("-nmcmoves",
+                    type=int,
+                    required=True,
+                    metavar="NMCMOVES",
+                    help="Average number of GCMC moves to attempt every nmdsteps steps.")
+parser.add_argument("-flex_ads",
+                    type=str,
+                    required=True,
+                    metavar="FLEX_ADS",
+                    help="Whether to use flexible adsorbate. Choose from 'True/False' or 'yes/no'.")
+parser.add_argument("-opt",
+                    type=str,
+                    required=True,
+                    help="Whether to perform geometry optimization on the initial structure.'True/False' or 'yes/no'.")
+parser.add_argument("-model_gcmc_path",
+                    type=str,
+                    required=True,
+                    metavar="MODEL_GCMC_PATH",
+                    help="Path to the Nequip MLP model to use on the GCMC moves.")
+parser.add_argument("-model_md_path",
+                    type=str,
+                    required=True,
+                    metavar="MODEL_MD_PATH",
+                    help="Path to the Nequip MLP model to use on the MD simulations.")
+parser.add_argument("-struc_path",
+                    type=str,
+                    required=True,
+                    metavar="STRUCTURE_PATH",
+                    help="Path to the initial structure as .cif file.")
+parser.add_argument("-molecule_path",
+                    type=str,
+                    required=True,
+                    metavar="MOLECULE_PATH",
+                    help="Path to the adsorbate molecule as .dat file.")
+parser.add_argument("-interval",
+                    type=int,
+                    required=True,
+                    metavar="INTERVAL",
+                    help="Interval for printing the simulation infomration on Lammps simulations.")
+args = parser.parse_args()
+
 
 #  torch.set_default_dtype(torch.float32)
 
