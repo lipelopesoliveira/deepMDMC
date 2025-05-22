@@ -1,8 +1,21 @@
+import sys
 import numpy as np
 from molmod.units import *
 from molmod.constants import *
 
 import CoolProp
+
+
+def getBoolStr(string):
+    string = string.lower()
+    if "true" in string or "yes" in string:
+        return True
+    elif "false" in string or "no" in string:
+        return False
+    else:
+        print("{} is bad input!!! Must be Yes/No or True/False".format(string))
+        sys.exit(1)
+
 
 def calculate_fugacity_with_coolprop(method, fluid, T, P):
     """
@@ -24,10 +37,11 @@ def calculate_fugacity_with_coolprop(method, fluid, T, P):
     #  HEOS.set_mole_fractions([1])
 
     HEOS.update(CoolProp.PT_INPUTS, P, T)  # Pressure in Pa
-    fugacity = HEOS.fugacity(0)# * J_to_au  # Convert to atomic units
+    fugacity = HEOS.fugacity(0)  # * J_to_au  # Convert to atomic units
     return fugacity
 
-def _random_rotation(pos, circlefrac = 1.0):
+
+def _random_rotation(pos, circlefrac=1.0):
     # Translate to origin
     com = np.average(pos, axis=0)
     pos -= com
@@ -53,16 +67,19 @@ def _random_rotation(pos, circlefrac = 1.0):
     pos = np.einsum('ib,ab->ia', pos, M)
     return pos + com
 
+
 def _random_translation(pos, rvecs):
     pos -= np.average(pos, axis=0)
     rnd = np.random.rand(3)
     new_cos = rnd[0]*rvecs[0] + rnd[1]*rvecs[1] + rnd[2]*rvecs[2]
     return pos + new_cos
 
+
 def random_position(pos, rvecs):
     pos = _random_rotation(pos)
     pos = _random_translation(pos, rvecs)
     return pos
+
 
 # version 1
 def vdw_overlap(atoms, vdw, n_frame, n_ads, select_ads):
@@ -76,6 +93,7 @@ def vdw_overlap(atoms, vdw, n_frame, n_ads, select_ads):
             if d < vdw[numbers[i_ads]] + vdw[numbers[i]]:
                 return True
     return False
+
 
 # version 2
 def vdw_collision(atoms, vdw):
@@ -199,7 +217,7 @@ class PREOS(EOS):
         # Read the data file containing parameters for a number of selected compounds
         fn = 'critical_acentric.csv'
 #        fn = pkg_resources.resource_filename(yaff.__name__, 'data/critical_acentric.csv')
-        dtype=[('compound','S20'),('mass','f8'),('Tc','f8'),('Pc','f8'),('omega','f8'),]
+        dtype = [('compound', 'S20'), ('mass', 'f8'), ('Tc', 'f8'), ('Pc', 'f8'), ('omega', 'f8'),]
         data = np.genfromtxt(fn, dtype=dtype, delimiter=',')
         # Select requested compound
         if not compound.encode('utf-8') in data['compound']:
@@ -309,5 +327,3 @@ class PREOS(EOS):
         mu += np.log(P/Pref)
         mu *= T*boltzmann
         return mu, Pref
-
-

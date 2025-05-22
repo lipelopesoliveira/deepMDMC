@@ -21,18 +21,7 @@ from utilities import PREOS
 from multiprocessing import Pool
 import argparse
 
-from utilities import calculate_fugacity_with_coolprop
-
-def getBoolStr(string):
-    string = string.lower()
-    if "true" in string or "yes" in string:
-        return True
-    elif "false" in string or "no" in string:
-        return False
-    else:
-        print("%s is bad input!!! Must be Yes/No or True/False" %string)
-        sys.exit(1)
-
+from utilities import calculate_fugacity_with_coolprop, getBoolStr
 
 parser = argparse.ArgumentParser(description="Give something ...")
 parser.add_argument("-sim_type", type=str, required=True, help="")
