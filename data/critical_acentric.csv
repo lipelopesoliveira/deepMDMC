@@ -1,6 +1,6 @@
 # Molecular weight, critical temperature, critical pressure and acentric factor for some common compounds
 # Data from Perry's Chemical Engineers' Handbook, 8th edition, Table 2-141
-# compound molweight(amu) Tc(kelvin) Pc(MPa) omega(-)
+# compound, molweight(amu), Tc(kelvin), Pc(MPa), omega(-)
 ammonia,17.031,405.65,11.28,0.2526
 argon,39.948,150.86,4.898,0.0000
 benzene,78.112,562.05,4.895,0.2103
