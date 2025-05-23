@@ -12,8 +12,8 @@ To use conda with MKL you need to set up the environment variables setted based 
 
 ```bash
 export MKLROOT=$CONDA_PREFIX
+export LIBRARY_PATH=$CONDA_PREFIX/lib/:$LIBRARY_PATH
 export LD_LIBRARY_PATH=$CONDA_PREFIX/lib/:$LD_LIBRARY_PATH
-export LIPRARY_PATH=$CONDA_PREFIX/lib/:$LIBRARY_PATH
 export PATH=$CONDA_PREFIX/bin/:$PATH
 ```
 
