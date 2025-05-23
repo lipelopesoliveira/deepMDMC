@@ -27,6 +27,9 @@ torch.set_num_threads(6)
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 
+# Preferably run on GPUs
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+
 parser = argparse.ArgumentParser(description="MD-GCMC simulation with DeepMDMC")
 # Required arguments
 parser.add_argument("-sim_type",
@@ -155,9 +158,6 @@ pressure = args.pressure * bar
 
 args.flex_ads = getBoolStr(args.flex_ads)
 args.opt = getBoolStr(args.opt)
-
-# Preferably run on GPUs
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
 
 #  calc_gcmc = load_model(model_gcmc_path)
 #  calc_md = load_model(model_md_path)
