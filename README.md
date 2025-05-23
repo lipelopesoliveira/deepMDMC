@@ -115,6 +115,8 @@ make install-python
 
 ## Running the code
 
+Copy the `CO2.dat` file from the `data` folder to the directory that you want to run the code. This file contains the parameters for the CO2 molecule for the LAMMPS simulation. You can also use your own file, but make sure it is in the same format as `CO2.dat`.
+
 ```bash
 python /home/flopes/MCMD/deepMDMC-main/mdmc/runDeepMDMC.py -sim_type 'gcmcmd' \
                                                             -pressure 1 \
