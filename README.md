@@ -35,7 +35,7 @@ git clone https://github.com/mir-group/pair_nequip
 
 ### Patch LAMMPS
 
-#### Automatically
+#### Automatically (Strongly recommended)
 
 From the `pair_nequip` directory, run:
 
