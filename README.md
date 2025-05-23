@@ -70,16 +70,13 @@ If you have PyTorch installed:
 cd lammps
 mkdir build
 cd build
-cmake ../cmake -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'`
+cmake -C ../cmake/presets/most.cmake ../cmake  -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'` -D CMAKE_INSTALL_PREFIX=$HOME/lib/lammps -DCUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX/bin/ -DMKL_INCLUDE_DIR=$CONDA_PREFIX/include/ -D BUILD_SHARED_LIBS=yes -D BUILD_TOOLS=yes -D BUILD_OMP=yes
 ```
 
-If you don't have PyTorch installed, you need to download LibTorch from the [PyTorch download page](https://pytorch.org/get-started/locally/). Unzip the downloaded file, then configure LAMMPS:
+If you don't have PyTorch installed, you need to download LibTorch from the [PyTorch download page](https://pytorch.org/get-started/locally/). Unzip the downloaded file, then configure LAMMPS with the `CMAKE_PREFIX_PATH` pointing to the unzipped LibTorch directory. For example, if you downloaded and unzipped it to `/path/to/libtorch`, then run:
 
 ```bash
-cd lammps
-mkdir build
-cd build
-cmake ../cmake -DCMAKE_PREFIX_PATH=/path/to/libtorch
+-DCMAKE_PREFIX_PATH=/path/to/libtorch
 ```
 
 CMake will look for MKL and, optionally, CUDA and cuDNN. You may have to explicitly provide the path for your CUDA installation (e.g. `-DCUDA_TOOLKIT_ROOT_DIR=/usr/lib/cuda/`) and your MKL installation (e.g. `-DMKL_INCLUDE_DIR=/usr/include/`).
@@ -105,8 +102,6 @@ if using plain Python and `pip`.
 ### Build LAMMPS
 
 ```bash
-cmake -C ../cmake/presets/most.cmake ../cmake  -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'` -D CMAKE_INSTALL_PREFIX=$HOME/lib/lammps -DCUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX/bin/ -DMKL_INCLUDE_DIR=$CONDA_PREFIX/include/ -D BUILD_SHARED_LIBS=yes -D BUILD_TOOLS=yes -D BUILD_OMP=yes
-
 make -j9
 make install
 ```
