@@ -121,19 +121,19 @@ make install-python
 
 ```bash
 python /home/flopes/MCMD/deepMDMC-main/mdmc/runDeepMDMC.py -sim_type 'gcmcmd' \
-                                                            -pressure 1000000 \
-                                                            -temperature 300 \
-                                                            -totalsteps 100 \
-                                                            -nmdsteps 5 \
-                                                            -nmcswap 10 \
-                                                            -nmcmoves 10 \
-                                                            -neqsteps 100 \
+                                                            -pressure 1 \
+                                                            -temperature 298 \
+                                                            -totalsteps 400000 \
+                                                            -nmdsteps 1000 \
+                                                            -nmcswap 250000 \
+                                                            -nmcmoves 250000 \
+                                                            -neqsteps 10000 \
                                                             -model_gcmc_path /home/flopes/MCMD/deepMDMC-main/MgMOF74_CO2_models/MgMOF74_CO2_float32.nequip.pth \
                                                             -model_md_path /home/flopes/MCMD/deepMDMC-main/MgMOF74_CO2_models/MgMOF74_CO2.nequip.pth \
                                                             -molecule_path /home/flopes/MCMD/deepMDMC-main/data/CO2.xyz \
                                                             -struc_path /home/flopes/MCMD/deepMDMC-main/data/mg-mof-74.cif \
-                                                            -timestep 0.001 \
+                                                            -timestep 0.0005 \
                                                             -flex_ads 'no' \
                                                             -opt 'no' \
-                                                            -interval 1
+                                                            -interval 50
 ```
