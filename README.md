@@ -68,8 +68,9 @@ If you have PyTorch installed:
 
 ```bash
 cd lammps
-mkdir build
-cd build
+
+mkdir build && cd build
+
 cmake -C ../cmake/presets/most.cmake ../cmake  -DCMAKE_PREFIX_PATH=`python -c 'import torch;print(torch.utils.cmake_prefix_path)'` -D CMAKE_INSTALL_PREFIX=$HOME/lib/lammps -DCUDA_TOOLKIT_ROOT_DIR=$CONDA_PREFIX/bin/ -DMKL_INCLUDE_DIR=$CONDA_PREFIX/include/ -D BUILD_SHARED_LIBS=yes -D BUILD_TOOLS=yes -D BUILD_OMP=yes
 ```
 
