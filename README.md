@@ -1,4 +1,4 @@
-# DeepMDMC: Deep Learning for Molecular Dynamics and Monte Carlo Simulations
+# DeepMDMC: Molecular Dynamics and Monte Carlo Simulations with Deep Learning Potentials
 
 ## Setting up the environment
 
