@@ -1,9 +1,14 @@
 import sys
+import os
 import numpy as np
 from molmod.units import *
 from molmod.constants import *
 
 import CoolProp
+import pathlib
+
+# Get the path to the current file
+current_file_path = pathlib.Path(__file__).resolve()
 
 
 def getBoolStr(string):
@@ -215,7 +220,7 @@ class PREOS(EOS):
            'yaff/data/critical_acentric.csv'
         """
         # Read the data file containing parameters for a number of selected compounds
-        fn = 'critical_acentric.csv'
+        fn = os.path.join(current_file_path.parent.parent, 'data', 'critical_acentric.csv')
 #        fn = pkg_resources.resource_filename(yaff.__name__, 'data/critical_acentric.csv')
         dtype = [('compound', 'S20'), ('mass', 'f8'), ('Tc', 'f8'), ('Pc', 'f8'), ('omega', 'f8'),]
         data = np.genfromtxt(fn, dtype=dtype, delimiter=',')
