@@ -290,6 +290,7 @@ else:
 
 
 if args.nmdsteps == 0:
+    print("nmdsteps is set to 0, running GCMC without MD steps.")
     args.sim_type = "gcmc"
 
 if args.sim_type.lower() == "gcmc":
