@@ -131,7 +131,7 @@ python /home/flopes/MCMD/deepMDMC-main/mdmc/runDeepMDMC.py -sim_type 'gcmcmd' \
                                                             -molecule_path /home/flopes/MCMD/deepMDMC-main/data/CO2.xyz \
                                                             -struc_path /home/flopes/MCMD/deepMDMC-main/data/mg-mof-74.cif \
                                                             -timestep 0.0005 \
-                                                            -flex_ads 'no' \
-                                                            -opt 'no' \
+                                                            -flex_ads \
+                                                            -opt \
                                                             -interval 50
 ```
