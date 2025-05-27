@@ -13,15 +13,13 @@ from ase.io.trajectory import Trajectory
 
 from time import time
 from deep_mdmc import DeepMDMC
-from molmod.units import kelvin, bar
+from molmod.units import bar
 from time import time
 
 from utilities import PREOS
 
 from multiprocessing import Pool
 import argparse
-
-from utilities import calculate_fugacity_with_coolprop, getBoolStr
 
 torch.set_num_threads(6)
 torch.backends.cuda.matmul.allow_tf32 = False
@@ -120,16 +118,15 @@ parser.add_argument("-adsorbate_atom_masses",
                     help="Masses for the adsorbate atoms as a csv strung. Ex.: '12.0107,15.9994'.")
 # Optional arguments
 parser.add_argument("-flex_ads",
-                    type=str,
+                    default=False,
                     required=False,
-                    default="False",
-                    metavar="FLEX_ADS",
-                    help="Whether to use flexible adsorbate. Choose from 'True/False' or 'yes/no'.")
+                    action='store_true',
+                    help="Whether to use flexible adsorbate.")
 parser.add_argument("-opt",
-                    type=str,
+                    default=False,
                     required=False,
-                    default="False",
-                    help="Whether to perform geometry optimization on the initial structure.'True/False' or 'yes/no'.")
+                    action='store_true',
+                    help="Whether to perform geometry optimization on the initial structure.")
 parser.add_argument("-interval",
                     type=int,
                     required=False,
@@ -138,29 +135,8 @@ parser.add_argument("-interval",
                     help="Interval for printing the simulation infomration on Lammps simulations.")
 args = parser.parse_args()
 
-
-#  torch.set_default_dtype(torch.float32)
-
-#  from nequip.ase.nequip_calculator import NequIPCalculator
-#
-#  def load_model(model_path):
-#      #  Modify species for Mg-MOF-74 (see training yaml file)
-#      return NequIPCalculator.from_deployed_model(
-#          model_path = model_path, #'./MgF2_nonbonded_v10_nnp1_e10.pth',
-#          species_to_type_name = {"C" : "C", "H" : "H", "O" : "O", "Mg" : "Mg"}, device=device,
-#          #  set_global_options=True
-#      )
-
 # Process command line arguments
-args.sim_type = args.sim_type.lower()
-args.temperature *= kelvin
 pressure = args.pressure * bar
-
-args.flex_ads = getBoolStr(args.flex_ads)
-args.opt = getBoolStr(args.opt)
-
-#  calc_gcmc = load_model(model_gcmc_path)
-#  calc_md = load_model(model_md_path)
 
 vdw_radii = vdw_radii.copy()
 vdw_radii[1] = 1.0
@@ -181,7 +157,6 @@ results_dir = "{}_results_N{}_X{}{}_{}bar_{}K".format(args.sim_type,
 
 # Create the results directory if it doesn't exist
 os.makedirs(results_dir, exist_ok=True)
-
 
 #  atom_type_pairs = {"Mg": 1, "O": 2,  "C": 3, "H": 4}
 #  atom_type_pairs = {"Mg": 1, "O": 2,  "C": 3, "H": 4, "C2": 5, "O2": 6}
@@ -285,11 +260,11 @@ if args.nmdsteps == 0:
     print("nmdsteps is set to 0, running GCMC without MD steps.")
     args.sim_type = "gcmc"
 
-if args.sim_type.lower() == "gcmc":
+if args.sim_type == "gcmc":
     deep_mdmc.init_gcmc()
     deep_mdmc.run_gcmc(args.nmcswap, args.nmcmoves)
 
-elif args.sim_type.lower() == "gcmcmd":
+elif args.sim_type == "gcmcmd":
 
     deep_mdmc.init_md(args.timestep,
                       atom_type_pairs_frame,
