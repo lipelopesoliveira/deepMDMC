@@ -130,8 +130,10 @@ python /home/flopes/MCMD/deepMDMC-main/mdmc/runDeepMDMC.py -sim_type 'gcmcmd' \
                                                             -model_md_path /home/flopes/MCMD/deepMDMC-main/MgMOF74_CO2_models/MgMOF74_CO2.nequip.pth \
                                                             -molecule_path /home/flopes/MCMD/deepMDMC-main/data/CO2.xyz \
                                                             -struc_path /home/flopes/MCMD/deepMDMC-main/data/mg-mof-74.cif \
+                                                            -framework_atom_types 'Mg,O,C,H' \
+                                                            -framework_atom_masses '24.3050,15.9994,12.0107,1.00794' \
+                                                            -adsorbate_atom_types 'C,O' \
+                                                            -adsorbate_atom_masses '12.0107,15.9994' \
                                                             -timestep 0.0005 \
-                                                            -flex_ads \
-                                                            -opt \
                                                             -interval 50
 ```
