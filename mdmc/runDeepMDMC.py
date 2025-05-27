@@ -34,10 +34,10 @@ parser = argparse.ArgumentParser(description="MD-GCMC simulation with DeepMDMC")
 # Required arguments
 parser.add_argument("-sim_type",
                     type=str,
-                    choices=["rigid", "gcmc", "gcmcmd", "tmmcmd"],
+                    choices=["gcmc", "gcmcmd", "tmmcmd"],
                     required=True,
                     metavar="SIM_TYPE",
-                    help="Type of simulation to be performed. Choose from 'rigid', 'gcmc', 'gcmcmd', or 'tmmcmd'.")
+                    help="Type of simulation to be performed. Choose from 'gcmc', 'gcmcmd', or 'tmmcmd'.")
 parser.add_argument("-model_gcmc_path",
                     type=str,
                     required=True,
@@ -290,9 +290,9 @@ else:
 
 
 if args.nmdsteps == 0:
-    args.sim_type = "rigid"
+    args.sim_type = "gcmc"
 
-if args.sim_type.lower() == "rigid":
+if args.sim_type.lower() == "gcmc":
     deep_mdmc.init_gcmc()
     deep_mdmc.run_gcmc(args.nmcswap, args.nmcmoves)
 
