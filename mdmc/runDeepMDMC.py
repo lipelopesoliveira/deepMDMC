@@ -21,13 +21,6 @@ from utilities import PREOS
 from multiprocessing import Pool
 import argparse
 
-torch.set_num_threads(6)
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
-
-# Preferably run on GPUs
-device = 'cuda' if torch.cuda.is_available() else 'cpu'
-
 parser = argparse.ArgumentParser(description="MD-GCMC simulation with DeepMDMC")
 # Required arguments
 parser.add_argument("-sim_type",
@@ -127,13 +120,27 @@ parser.add_argument("-opt",
                     required=False,
                     action='store_true',
                     help="Whether to perform geometry optimization on the initial structure.")
+parser.add_argument("-nThreads",
+                    type=int,
+                    required=False,
+                    default=1,
+                    metavar="NTHREADS",
+                    help="Number of threads to use for the simulation with CPU only. Default is 1.")
 parser.add_argument("-interval",
                     type=int,
                     required=False,
                     default=100,
                     metavar="INTERVAL",
                     help="Interval for printing the simulation infomration on Lammps simulations.")
+
 args = parser.parse_args()
+
+# Preferably run on GPUs
+device = 'cuda' if torch.cuda.is_available() else 'cpu'
+if device == 'cpu':
+    torch.set_num_threads(args.nThreads)
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
 
 # Process command line arguments
 pressure = args.pressure * bar

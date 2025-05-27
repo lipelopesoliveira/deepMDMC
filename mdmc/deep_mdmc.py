@@ -1,5 +1,6 @@
 import numpy as np
 import random
+from packaging.version import Version
 
 from ase import Atoms
 from ase.cell import Cell
@@ -490,13 +491,10 @@ class DeepMDMC():
             self.n_tot_succ_steps += 1
 
     def _load_model(self, model_path, device: str = "cpu"):
-        if float(nequip.__version__) < 7.0:
-            return NequIPCalculator.from_deployed_model(model_path=model_path,
-                                                        device=device)
+        if Version(nequip.__version__) < Version('0.7.0'):
+            return NequIPCalculator.from_deployed_model(model_path=model_path, device=device)
         else:
-            return NequIPCalculator.from_compiled_model(
-                compile_path=model_path,
-                device=device)
+            return NequIPCalculator.from_compiled_model(compile_path=model_path, device=device)
 
     def init_gcmc(self):
 
