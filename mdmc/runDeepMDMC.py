@@ -251,19 +251,11 @@ if args.sim_type == "tmmcmd":
 
 else:
     atoms_frame = read(args.struc_path)
+
     replica = [1, 1, 1]
     P = [[0, 0, -replica[0]], [0, -replica[1], 0], [-replica[2], 0, 0]]
     atoms_frame = make_supercell(atoms_frame, P)
-    #  if opt:
-    #      atoms_frame.calc = calc_md
-    #      #  write("framebeforeopt.cif", atoms_frame)
-    #      # geom opt frame based on model
-    #      # to account relaxation of cell
-    #      #  traj = Trajectory('frames.traj', 'w', atoms_frame)
-    #      ucf = UnitCellFilter(atoms_frame)
-    #      optimizer = LBFGS(ucf)
-    #      #  optimizer.attach(traj)
-    #      optimizer.run(fmax=0.001)
+
     write("frame0.extxyz", atoms_frame)
     #  write("frame0.cif", atoms_frame)
     #  atoms_frame = read("frame0.cif")
@@ -306,8 +298,13 @@ elif args.sim_type.lower() == "gcmcmd":
                       tdump=tdump,
                       pdump=pdump,
                       md_type="npt",
-                      opt=True,
+                      opt=args.opt,
                       equ_steps=args.neqsteps)
 
     deep_mdmc.init_gcmc()
-    deep_mdmc.run_gcmcmd(args.totalsteps, args.nmdsteps, args.nmcswap, args.nmcmoves)
+    deep_mdmc.run_gcmcmd(
+        totalsteps=args.totalsteps,
+        nmdsteps=args.nmdsteps,
+        nmcswap=args.nmcswap,
+        nmcmoves=args.nmcmoves
+        )

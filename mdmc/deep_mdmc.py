@@ -145,7 +145,7 @@ class DeepMDMC():
                           atom_style="full"
                          )
         #  write("test_trj.extxyz", atoms, append=True)
-        #NOTE: there is some problem velocity unit convertsioin with write_lammps_data.
+        # NOTE: there is some problem velocity unit convertsioin with write_lammps_data.
         # we write manual below 
         with open(data_file, 'a') as f:
             f.write("\n\nVelocities\n\n")
@@ -231,6 +231,7 @@ class DeepMDMC():
             xhi, yhi, zhi, xy, xz, yz = convert(
                 prismobj.get_lammps_prism(), 'distance', 'ASE', units)
 
+            # NOTE: LAMMPS box were redefined in the following way:
             xlo_bound = 0 + min(0, xy, xz, xy + xz)
             xhi_bound = xhi + max(0, xy, xz, xy + xz)
             ylo_bound = 0 + min(0, yz)
@@ -259,19 +260,30 @@ class DeepMDMC():
             for atom in atoms_frame:
                 pos = positions[i]
                 vel = velocities[i] if velocities is not None else [0.0, 0.0, 0.0]
-                f.write(f"{i+1} {mol_type} {self.atom_type_pairs_frame[atom.symbol][0]} {pos[0]:.8f} {pos[1]:.8f} {pos[2]:.8f} {vel[0]:.8f} {vel[1]:.8f} {vel[2]:.8f}\n")
+                f.write("{} {} {} {:.8f} {:.8f} {:.8f} {:.8f} {:.8f} {:.8f}\n".format(
+                    i + 1,
+                    mol_type,
+                    self.atom_type_pairs_frame[atom.symbol][0],
+                    pos[0], pos[1], pos[2],
+                    vel[0], vel[1], vel[2]))
                 i += 1
 
-            mol_type += 1 # next molecule type 
+            mol_type += 1  # next molecule type
             # Write atomic data for ads
             positions = convert(atoms_ads.positions, 'distance', 'ASE', units)
             velocities = convert(atoms_ads.get_velocities(), 'velocity', 'ASE', units)
             for j, atom in enumerate(atoms_ads):
                 pos = positions[j]
                 vel = velocities[j] if velocities is not None else [0.0, 0.0, 0.0]
-                f.write(f"{i+1} {mol_type} {self.atom_type_pairs_ads[atom.symbol][0]} {pos[0]:.8f} {pos[1]:.8f} {pos[2]:.8f} {vel[0]:.8f} {vel[1]:.8f} {vel[2]:.8f}\n")
+                f.write("{} {} {} {:.8f} {:.8f} {:.8f} {:.8f} {:.8f} {:.8f}\n".format(
+                    i + 1,
+                    mol_type,
+                    self.atom_type_pairs_ads[atom.symbol][0],
+                    pos[0], pos[1], pos[2],
+                    vel[0], vel[1], vel[2]))
+
                 if j != 0 and (j+1) % self.n_ads == 0:
-                    mol_type += 1 # next molecule type
+                    mol_type += 1  # next molecule type
                 i += 1
 
     def init_md(self, timestep, atom_type_pairs_frame, atom_type_pairs_ads, units_lmp, tdump, pdump, md_type, opt, equ_steps):
@@ -287,7 +299,7 @@ class DeepMDMC():
 
         MaxwellBoltzmannDistribution(self.atoms, self.T * 0.8)
 
-        # NOTE _atoms2lammpsdata only for inintia frame not system with gas
+        # NOTE _atoms2lammpsdata only for initial frame not system with gas
         # becauase of the same atom symbol not extracted from atom_type_pairs
         self._atoms2lammpsdata(data_file, self.atoms, atom_type_pairs_frame)
 
@@ -302,17 +314,16 @@ class DeepMDMC():
         self.lmp.command("dimension 3")
         self.lmp.command("boundary p p p")
         #  self.lmp.command("atom_style atomic")
-        self.lmp.command("atom_style full") # NOTE rigid/small not valid for atom_style atomic
+        self.lmp.command("atom_style full")  # NOTE rigid/small not valid for atom_style atomic
         self.lmp.command("newton off")
         #  self.lmp.command(f"read_data {data_file}")
         self.lmp.command(f"read_data {data_file} extra/atom/types 2")
-        self.lmp.command(f"molecule co2mol CO2.dat")
+        self.lmp.command("molecule co2mol CO2.dat")
 
         for values in atom_type_pairs_frame.values():
-           self.lmp.command(f"mass {values[0]} {values[1]}")
+            self.lmp.command(f"mass {values[0]} {values[1]}")
         for values in atom_type_pairs_ads.values():
-           self.lmp.command(f"mass {values[0]} {values[1]}")
-
+            self.lmp.command(f"mass {values[0]} {values[1]}")
 
         self.lmp.command("pair_style nequip")
         self.lmp.command(f"pair_coeff * * {self.model_path_md} {' '.join(specorder)}")
@@ -337,13 +348,12 @@ class DeepMDMC():
             self.lmp.command(f"fix init_nvt all nvt temp {self.T} {self.T} {self.tdump}")
             self.lmp.command(f"run {equ_steps}")
             #  self.lmp.command(f"run 50")
-            self.lmp.command(f"unfix init_nvt")
-            self.lmp.command(f"reset_timestep 0")
+            self.lmp.command("unfix init_nvt")
+            self.lmp.command("reset_timestep 0")
 
-
-        self.lmp.command(f"fix 1 all recenter INIT INIT NULL")
+        self.lmp.command("fix 1 all recenter INIT INIT NULL")
         self.lmp.command(f"dump 1 all atom {self.interval} {self.results_dir}/md_{self.T}K_{self.P/bar}bar.lammpstrj")
-        self.lmp.command(f"dump_modify 1 append yes")
+        self.lmp.command("dump_modify 1 append yes")
 
         if md_type == "npt":
             self.lmp.command(f"fix mynpt all npt temp {self.T} {self.T} {self.tdump} iso {self.P/bar} {self.P} {self.pdump}")
@@ -353,14 +363,14 @@ class DeepMDMC():
             raise ValueError("md_type is not valid")
 
     def set_rigid_ads_lapmms(self, unfix_flag):
-        self.lmp.command(f"group frame type 1 2 3 4")
-        self.lmp.command(f"group co2 type 5 6")
+        self.lmp.command("group frame type 1 2 3 4")
+        self.lmp.command("group co2 type 5 6")
 
         if self.Z_ads > 0 and unfix_flag:
-            self.lmp.command(f"compute mdtemp co2 temp")
-        self.lmp.command(f"compute_modify  mdtemp dynamic/dof yes")
-        self.lmp.command(f"fix rigidco2 co2 rigid/small molecule")
-        self.lmp.command(f"fix_modify rigidco2 dynamic/dof yes")
+            self.lmp.command("compute mdtemp co2 temp")
+        self.lmp.command("compute_modify  mdtemp dynamic/dof yes")
+        self.lmp.command("fix rigidco2 co2 rigid/small molecule")
+        self.lmp.command("fix_modify rigidco2 dynamic/dof yes")
         #  self.lmp.command(f"fix rigidco2 co2 rigid/nvt/small molecule mol co2mol temp {self.T} {self.T} {100*timestep}")
         #  self.lmp.command(f"fix_modify rigidco2 dynamic/dof yes")
         self.lmp.command(f"fix myframe frame npt temp {self.T} {self.T} {self.tdump} iso {self.P/bar} {self.P/bar} {self.pdump}")
@@ -462,8 +472,8 @@ class DeepMDMC():
         pos[picked_atoms_idx] = _random_rotation(pos[picked_atoms_idx], circlefrac=0.25)
         pos[picked_atoms_idx] = pos[picked_atoms_idx] + 2.0 * (np.random.rand(3) - 0.5)
 
-
         atoms_trial.set_positions(pos)
+
         if vdw_overlap(atoms_trial, self.vdw, self.n_frame, self.n_ads, i_ads):
             e_trial = 10**10 * kjmol
         else:
@@ -631,13 +641,13 @@ class DeepMDMC():
 
             if not self.flex_ads:
                 if self.Z_ads > 0 and unfix_flag:
-                    self.lmp.command(f"unfix mynpt")
+                    self.lmp.command("unfix mynpt")
                     #  self.lmp.command(f"unfix mynvt")
                     self.set_rigid_ads_lapmms(unfix_flag)
                     unfix_flag = False
                 elif self.Z_ads > 0 and not unfix_flag:
-                    self.lmp.command(f"unfix rigidco2")
-                    self.lmp.command(f"unfix myframe")
+                    self.lmp.command("unfix rigidco2")
+                    self.lmp.command("unfix myframe")
                     self.set_rigid_ads_lapmms(unfix_flag)
 
             self.lmp.command(f"run {nmdsteps}")
@@ -656,7 +666,7 @@ class DeepMDMC():
 
             self._ase_to_lammpstrj(atoms_frame, atoms_ads, f"{self.results_dir}/last_frame.lammpstrj", timestep=0, units=self.units_lmp)
 
-            self.lmp.command(f"undump 1")
+            self.lmp.command("undump 1")
             self.lmp.command(f"read_dump {self.results_dir}/last_frame.lammpstrj 0 x y z vx vy vz replace no purge yes add yes timestep no")
 
             # Set the ids to obtain the rigid body of each molecule individually
@@ -673,7 +683,7 @@ class DeepMDMC():
                 atom_id += 1
 
             self.lmp.command(f"dump 1 all atom {self.interval} {self.results_dir}/md_{self.T}K_{self.P/bar}bar.lammpstrj")
-            self.lmp.command(f"dump_modify 1 append yes")
+            self.lmp.command("dump_modify 1 append yes")
             #  self.lmp.command(f"rerun last_frame.lammpstrj dump x y z vx vy vz")
 
     def run_tmmcmd(self, nmdsteps):
