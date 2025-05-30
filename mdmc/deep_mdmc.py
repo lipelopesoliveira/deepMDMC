@@ -494,7 +494,7 @@ class DeepMDMC():
         if Version(nequip.__version__) < Version('0.7.0'):
             return NequIPCalculator.from_deployed_model(model_path=model_path, device=device)
         else:
-            return NequIPCalculator.from_compiled_model(compile_path=model_path, device=device)
+            return NequIPCalculator.from_compiled_model(compile_path=model_path, device=device)  # type: ignore
 
     def init_gcmc(self):
 
@@ -591,10 +591,9 @@ class DeepMDMC():
             except:
                 print("saving npz failed but continue GCMC")
 
-            # save status and geoms
-            if self.n_tot_succ_steps % self.interval == 0 and self.old_n_tot_succ_steps != self.n_tot_succ_steps:
+            if interation % self.interval == 0:
                 try:
-                    write(f'{self.results_dir}/trajectory_{self.P/bar}bar.extxyz', 
+                    write(f'{self.results_dir}/trajectory_{self.P/bar}bar.extxyz',
                           self.atoms,
                           append=True,
                           write_results=False,
@@ -603,6 +602,9 @@ class DeepMDMC():
                 except Exception as e:
                     print("saving extxyz failed but continue GCMC")
                     print(e)
+
+            # save status and geoms
+            if self.n_tot_succ_steps % self.interval == 0:
 
                 print("{}, {}, {}, {}, {}, {:.1f}, {:.1f}".format(
                     self.n_tot_succ_steps,
