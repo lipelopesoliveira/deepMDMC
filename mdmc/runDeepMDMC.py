@@ -21,6 +21,10 @@ from utilities import PREOS
 from multiprocessing import Pool
 import argparse
 
+# Set beckends for cuda and disable TF32 (only relevant for Ampere and later architectures)
+torch.backends.cuda.matmul.allow_tf32 = False
+torch.backends.cudnn.allow_tf32 = False
+
 parser = argparse.ArgumentParser(description="MD-GCMC simulation with DeepMDMC")
 # Required arguments
 parser.add_argument("-sim_type",
@@ -139,9 +143,6 @@ args = parser.parse_args()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 if device == 'cpu':
     torch.set_num_threads(args.nThreads)
-
-torch.backends.cuda.matmul.allow_tf32 = False
-torch.backends.cudnn.allow_tf32 = False
 
 # Process command line arguments
 pressure = args.pressure * bar
