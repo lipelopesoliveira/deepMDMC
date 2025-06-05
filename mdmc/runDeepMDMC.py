@@ -192,9 +192,7 @@ if args.sim_type == "tmmcmd":
     #  write("frame0.extxyz", atoms_frame)
 
     atoms_ads = read(args.molecule_path)
-    vdw_radii = vdw_radii.copy()
-    # Mg radius is set to 1.0 A
-    vdw_radii[12] = 1.0
+
     atoms_frame0 = read("frame0.extxyz")
     atoms_frame = read("loaded_frame1.extxyz")
     Z_ads = int((len(atoms_frame) - len(atoms_frame0)) / len(atoms_ads))
