@@ -139,6 +139,7 @@ args = parser.parse_args()
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 if device == 'cpu':
     torch.set_num_threads(args.nThreads)
+
 torch.backends.cuda.matmul.allow_tf32 = False
 torch.backends.cudnn.allow_tf32 = False
 
@@ -146,10 +147,9 @@ torch.backends.cudnn.allow_tf32 = False
 pressure = args.pressure * bar
 
 vdw_radii = vdw_radii.copy()
-vdw_radii[1] = 1.0
-vdw_radii[6] = 1.0
-vdw_radii[8] = 1.25
-vdw_radii[12] = 1.25
+# Force vdW radii to be 1.0 A for all atoms
+# This is a workaround to prevent issues with insertion of custom atom types
+vdw_radii = [1.0 for _ in range(len(vdw_radii))]
 
 #  fugacity = calculate_fugacity_with_coolprop("HEOS", "CO2", temperature, pressure)
 eos = PREOS.from_name('carbondioxide')
